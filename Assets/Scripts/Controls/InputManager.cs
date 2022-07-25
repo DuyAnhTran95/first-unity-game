@@ -1,53 +1,27 @@
 
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 [DefaultExecutionOrder(-1)]
 public class InputManager : Singleton<InputManager>
 {
-    public delegate void StartTouchEvent(Vector2 position, float time);
-    public event StartTouchEvent OnStartTouch;
-    public delegate void EndTouchEvent(Vector2 position, float time);
-    public event EndTouchEvent OnEndTouch;
-
-    private TouchControl touchControls;
-
     private void Awake()
     {
-        touchControls = new TouchControl();
+        EnhancedTouchSupport.Enable();
     }
 
-    private void OnEnable()
+    private void Update()
     {
-        touchControls.Enable();
-    }
-
-    private void OnDisable()
-    {
-        touchControls.Disable();
-    }
-
-    private void Start()
-    {
-        touchControls.Touch.TouchPress.started += ctx => StartTouch(ctx);
-        touchControls.Touch.TouchPress.canceled += ctx => EndTouch(ctx);
-    }
-
-    private void StartTouch(InputAction.CallbackContext ctx)
-    {
-        Debug.Log("Touch started " + touchControls.Touch.TouchPosition.ReadValue<Vector2>());
-        if (OnStartTouch != null)
+        if (Touch.activeTouches.Count > 0)
         {
-            OnStartTouch(touchControls.Touch.TouchPosition.ReadValue<Vector2>(), (float)ctx.startTime);
+            Move(Touch.activeTouches[0]);
         }
     }
 
-    private void EndTouch(InputAction.CallbackContext ctx)
+    private void Move(Touch touch)
     {
-        Debug.Log("Touch ended " + touchControls.Touch.TouchPosition.ReadValue<Vector2>());
-        if (OnEndTouch != null)
-        {
-            OnEndTouch(touchControls.Touch.TouchPosition.ReadValue<Vector2>(), (float)ctx.time);
-        }
+        PlayerController.Instance?.MoveTo(touch.screenPosition);
+        DotController.Instance?.MoveTo(touch.screenPosition);
     }
 }

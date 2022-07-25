@@ -1,48 +1,82 @@
 using UnityEngine;
 
-namespace Controls
+
+public class PlayerController : Singleton<PlayerController>
 {
-    public class PlayerController : MonoBehaviour
+    public float Speed;
+    
+    public Color MovingColor;
+    public Color IdleColor;
+    public Vector3 initPosition;
+
+    private MovingPhase phase;
+    private MovingPhase nextPhase;
+
+    private Vector3 lastDestination;
+    private Camera cameraMain;
+    enum MovingPhase { Idle, Moving, Collide };
+
+    void Awake()
     {
-        public float speed;
-        public Vector3 initPosition;
+        cameraMain = Camera.main;
+        transform.position = initPosition;
+        lastDestination = initPosition;
+        phase = MovingPhase.Idle;
+    }
 
-        private Vector3 lastDestination;
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        Debug.Log($"collision with {collision.attachedRigidbody.tag}");
+        if (collision.attachedRigidbody.CompareTag("Boundary"))
+            Stop();
+    }
 
-        private InputManager inputManager;
-        private Camera cameraMain;
+    //private void OnTriggerExit2D(Collider2D collision)
+    //{
+    //}
 
-        void Awake()
-        {
-            inputManager = InputManager.Instance;
-            cameraMain = Camera.main;
-            transform.position = initPosition;
-            lastDestination = initPosition;
+    private void ChangeColor(Color newColor)
+    {
+        gameObject.GetComponent<SpriteRenderer>().material.color = newColor;
+    }
+
+    public void MoveTo(Vector2 position)
+    {
+        Vector3 screenCoord = new Vector3(position.x, position.y, 0);
+        Vector3 worldCoord = cameraMain.ScreenToWorldPoint(screenCoord);
+        worldCoord.z = 0;
+        lastDestination = worldCoord;
+
+        if (lastDestination != transform.position)
+            nextPhase = MovingPhase.Moving;
+    }
+
+    private void Move()
+    {
+        transform.position = Vector2.MoveTowards(transform.position, lastDestination, Time.deltaTime * Speed);
+        if (transform.position == lastDestination)
+            Stop();
+    }
+
+    private void Stop()
+    {
+        lastDestination = transform.position;
+        nextPhase = MovingPhase.Idle;
+    }
+    private void Update()
+    {
+        switch (phase) {
+            case MovingPhase.Idle:
+                if (nextPhase == MovingPhase.Moving)
+                    ChangeColor(MovingColor);
+                break;
+            case MovingPhase.Moving:
+                Move();
+                if (nextPhase == MovingPhase.Idle)
+                    ChangeColor(IdleColor);
+                break;
         }
-
-        private void OnEnable()
-        {
-            inputManager.OnStartTouch += Move;
-        }
-
-        private void OnDisable()
-        {
-            inputManager.OnEndTouch -= Move;
-        }
-
-        void Move(Vector2 position, float time)
-        {
-            Vector3 screenCoord = new Vector3(position.x, position.y, 0);
-            Vector3 worldCoord = cameraMain.ScreenToWorldPoint(screenCoord);
-            worldCoord.z = 0;
-            lastDestination = worldCoord;
-        }
-
-        private void Update()
-        {
-            Debug.Log("current position: " + transform.position);
-            Debug.Log("destination: " + lastDestination);
-            transform.position = Vector2.MoveTowards(transform.position, lastDestination, speed);
-        }
+        phase = nextPhase;
     }
 }
+
